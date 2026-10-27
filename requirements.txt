@@ -1,0 +1,6 @@
+# Runtime dependencies for the local magnitude / B-factor experiment package
+numpy
+pandas
+scipy
+scikit-learn
+threadpoolctl
