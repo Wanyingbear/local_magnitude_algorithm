@@ -1,0 +1,17 @@
+{
+  "protocols": [
+    "protein_cv",
+    "atom_cv",
+    "lopo"
+  ],
+  "new_fits": 0,
+  "cached": 1460,
+  "imported_checkpoints_used": 1460,
+  "force_retrain": false,
+  "environment": {
+    "python": "3.12.14",
+    "numpy": "2.3.5",
+    "scipy": "1.18.1",
+    "sklearn": "1.9.1"
+  }
+}

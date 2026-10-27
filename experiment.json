@@ -1,0 +1,38 @@
+{
+  "k": 50,
+  "local_alphas": [
+    0.1,
+    0.2,
+    0.3,
+    0.4,
+    0.5,
+    0.6
+  ],
+  "global_alphas": [
+    0.3,
+    0.4,
+    0.5,
+    0.6,
+    0.7,
+    0.8
+  ],
+  "powers": [
+    1,
+    2
+  ],
+  "seed": 0,
+  "trees": 1000,
+  "protocols": [
+    "protein_cv",
+    "atom_cv",
+    "lopo"
+  ],
+  "models": [
+    "RF",
+    "GBDT"
+  ],
+  "cases": [
+    "global49",
+    "local49"
+  ]
+}
