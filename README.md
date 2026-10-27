@@ -1,91 +1,93 @@
 # Local Magnitude
 
-[English version](README_EN.md)
+[中文说明](README_ZH.md)
 
-独立的Cα点云global/local weighting与B-factor实验包。整个目录可移动；不需要外部仓库、原文脚本或原工作区outputs。包内只保留运行代码、固定输入、缓存和当前结果，稿件与来源说明不入包。
+Standalone global/local C-alpha weighting and B-factor experiment package. The whole directory is self-contained and movable; no external repository, original scripts or previous workspace outputs are required. The package keeps runtime code, fixed inputs, cache and current results only; the manuscript and provenance notes are maintained outside it.
 
-## Spyder运行顺序
+## Run order in Spyder
 
-1. spyder_prepare.py：从坐标计算两种特征，完成Task1并准备Task2。
-2. spyder_train.py：训练global49/local49的RF/GBDT。
-3. spyder_audit.py：独立检查预测、划分与评分。
+1. spyder_prepare.py — compute both features from coordinates, finish Task1 and prepare Task2.
+2. spyder_train.py — train RF/GBDT for global49/local49.
+3. spyder_audit.py — independently check predictions, splits and scoring.
 
-打开文件按F5。已有特征时可直接train→audit。当前解释器需安装numpy、pandas、scipy、scikit-learn、threadpoolctl。
+Open a file and press F5. With existing features you can go directly train → audit. The interpreter needs numpy, pandas, scipy, scikit-learn and threadpoolctl.
 
-spyder_train.py设置WORKERS=4（普通笔记本可用2）、PROTOCOLS=['protein_cv','atom_cv','lopo']、AGGREGATE_ONLY=False、FORCE_RETRAIN=False。
+Settings in spyder_train.py: WORKERS=4 (2 is fine on a typical laptop), PROTOCOLS=['protein_cv','atom_cv','lopo'], AGGREGATE_ONLY=False, FORCE_RETRAIN=False.
 
-- FORCE_RETRAIN=False：复用本包有效缓存，打印New fits、cached、imported。
-- FORCE_RETRAIN=True：选中协议的global和local全部重新拟合，替换检查点；不再从外部整体基线复用。要保留旧运行请先备份cache/k50。
-- AGGREGATE_ONLY=True：只汇总完整有效缓存；缺失则报错。
-- 全套1460个模型，RF/GBDT各1000棵树，seed=0。先试十折可只选protein_cv、atom_cv。导入缓存不等于新训练。
+- FORCE_RETRAIN=False: reuse valid in-package caches; prints New fits, cached, imported.
+- FORCE_RETRAIN=True: refit both global and local for the selected protocols and replace checkpoints; no external baseline reuse. Back up cache/k50 first if you want to keep old runs.
+- AGGREGATE_ONLY=True: aggregate complete valid caches only; fails if anything is missing.
+- The full experiment has 1460 models, RF/GBDT with 1000 trees each, seed=0. To try ten-fold first, select only protein_cv and atom_cv. Imported cache is not the same as new training.
 
-## 输出位置
+## Outputs
 
-**只需查看results/k50/**：
+**Just look at results/k50/**:
 
-| 文件 | 用途 |
+| File | Purpose |
 | --- | --- |
-| task1_summary.csv | Task1四个子集评分 |
-| task1_metrics.csv | Task1逐蛋白结果和散点图数据 |
-| task2_metrics.csv | 主PCC、pooled PCC、RMSE、MAE和均值基线 |
-| comparison.csv | global/local六项直接比较，不混入文献值 |
-| task2_per_protein.csv | Task2逐蛋白评分 |
-| lopo_subsets.csv | LOPO分组 |
-| feature_diagnostics.csv | 特征范围和饱和度 |
-| validation.json | 本次验证状态 |
-| run.json | 最近训练的新拟合和缓存数量 |
-| REPORT.md | 简洁结果说明 |
+| task1_summary.csv | Task1 scores on the four subsets |
+| task1_metrics.csv | Task1 per-protein results and scatter data |
+| task2_metrics.csv | Primary PCC, pooled PCC, RMSE, MAE and mean baseline |
+| comparison.csv | Six direct global/local comparisons, no literature values mixed in |
+| task2_per_protein.csv | Task2 per-protein scores |
+| lopo_subsets.csv | LOPO grouping |
+| feature_diagnostics.csv | Feature ranges and saturation |
+| validation.json | Validation status of this run |
+| run.json | New fits and cached counts of the last training |
+| REPORT.md | Concise result summary |
 
-完整audit应为passed=true、complete=true、fold_prediction_files_checked=1460、测试行各覆盖一次。部分协议audit标记scope和complete=false。prepare/train改动输出前会使旧验证失效。
+A complete audit reports passed=true, complete=true, fold_prediction_files_checked=1460, with every test row covered exactly once. Partial-protocol audits mark scope and complete=false. prepare/train invalidate prior verification before changing outputs.
 
-只保留k50实验。不生成半径12Å等参数搜索、重复逐原子CSV、阶段性报告和全数据计时。用于断点续跑及核验的1460个压缩预测文件位于cache/k50/task2；每个含test_indices、prediction、training_mean、metadata。按test_indices连接data/task2.npz即可定位原子与目标。
+Only the k50 experiment is kept. No radius-12Å style parameter searches, duplicate per-atom CSVs, staged reports or dataset-wide timings are generated. The 1460 compressed prediction files used for resuming and verification live in cache/k50/task2; each contains test_indices, prediction, training_mean and metadata. Join test_indices to data/task2.npz to recover atom identities and targets.
 
-## 配置与口径
+cache/k50 contains feature arrays, Task1 fits and compressed prediction checkpoints. Complete validation reports passed=true, complete=true and 1460 folds; partial audits report scope and complete=false. Preparing or retraining invalidates prior verification first.
 
-- local：包含中心的最近50个Cα，p=1,2，alpha=0.1,...,0.6；不足50用全部。
-- global：p=1,2，alpha=0.3,...,0.8，维持论文原有实验设置。
-- K=exp(-alpha*d**p)，Cholesky解Kw=1；局部取中心weighting，不是邻域总和。
-- Task1：364蛋白、78403行，自身标签上的12维OLS拟合，不是盲测。
-- Task2：345蛋白、74527行，12维加相同的37维辅助输入，目标不作为特征。
-- 几何计算float64；树模型输入缓存float32，与模型内部表示一致。
-- 十折primary_pcc为折平均，LOPO为逐蛋白平均；pooled PCC不能直接替换。
-- 原子十折允许同蛋白其他残基训练。单seed、历史选参涉及重叠蛋白，不是独立外部验证。
-- 软件版本可能影响新训练结果；导入缓存保留来源，audit不会重新训练。
+## Configuration and definitions
 
-## 目录
+- local: 50 nearest C-alpha including the center, p=1,2, alpha=0.1,...,0.6; use all C-alpha when fewer than 50.
+- global: p=1,2, alpha=0.3,...,0.8, preserving the manuscript configuration.
+- K=exp(-alpha\*d\*\*p), Cholesky solves Kw=1; local returns center weights, not neighborhood totals.
+- Task1: 364 proteins / 78403 rows, 12-column within-protein OLS fits on own labels, not blind testing.
+- Task2: 345 proteins / 74527 rows, 12 geometry columns plus the same 37 supplied auxiliary columns; targets are never features.
+- Geometry uses float64; tree inputs are cached as float32, matching the model's internal representation.
+- Ten-fold primary_pcc averages folds; LOPO averages proteins; pooled PCC is not interchangeable.
+- Atom CV may train on other residues of the test protein. Single-seed evaluation and historical selection on overlapping proteins are exploratory, not independent external validation.
+- Library versions can affect refits; imported caches keep explicit origins and audit never retrains.
 
-~~~text
-algorithms/          local_ca_regular.py、global_ca.py
-pipeline/            prepare、train、audit、common
-data/task1/          xyz、y、source_rows
-data/task2.npz       xyz、y、groups、auxiliary、source_rows
-data/datasets.json   名单、子集和辅助列定义
-cache/k50/           特征、拟合和预测检查点
-results/k50/         当前运行结果
-experiment.json      统一配置
-~~~
+## Directory
 
-包内只保留Task1/Task2链路的代码、固定输入、缓存与结果；计时脚本、示例数据和字节码缓存不入包。
+```text
+algorithms/          local_ca_regular.py, global_ca.py
+pipeline/            prepare, train, audit, common
+data/task1/          xyz, y, source_rows
+data/task2.npz       xyz, y, groups, auxiliary, source_rows
+data/datasets.json   cohort, subset and auxiliary column definitions
+cache/k50/           features, fits and prediction checkpoints
+results/k50/         current run output
+experiment.json      unified configuration
+```
 
-results/k50为当前运行结果，包内不含LaTeX稿件及固定evidence快照，论文数字需在外部稿件目录单独维护，不随本包运行自动改写。
+The package keeps only the Task1/Task2 chain: runtime code, fixed inputs, cache and results; timing scripts, example datasets and bytecode caches are excluded.
 
-## 算法直接调用与校验
+results/k50 holds current output. The package ships no LaTeX manuscript or fixed evidence snapshot, so paper numbers are maintained in the external manuscript directory and are never rewritten here by a run.
 
-函数调用 `local_ca_regular(xyz, k=50, n_jobs=4)` 可按邻域并行；默认 `n_jobs=1`。多工作线程时，建议外层使用 `threadpoolctl.threadpool_limits(limits=1)` 限制 BLAS 线程。
+## Direct algorithm calls and verification
 
-verify_bundle.py：固定输入/算法哈希和独立LU验证。主动修改源码后可加--skip-hashes。manifest不锁定可变结果。
+`local_ca_regular(xyz, k=50, n_jobs=4)` supports neighborhood threading; the default remains `n_jobs=1`. Wrap threaded calls in `threadpoolctl.threadpool_limits(limits=1)` to avoid nested BLAS parallelism.
 
-~~~python
+verify_bundle.py checks fixed-input/algorithm hashes and independent LU identities. After intentional source edits use --skip-hashes. The manifest does not lock mutable results.
+
+```python
 from algorithms import local_ca_regular, global_ca
 local = local_ca_regular(xyz, k=50)
 global_weights = global_ca(xyz)
-~~~
+```
 
-~~~text
+```text
 python -m pip install numpy pandas scipy scikit-learn threadpoolctl
 python verify_bundle.py
 python run_experiment.py prepare --workers 4
 python run_experiment.py train --workers 4
 python run_experiment.py train --protocols protein_cv --force-retrain --workers 2
 python run_experiment.py audit
-~~~
+```
